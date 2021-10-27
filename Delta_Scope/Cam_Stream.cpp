@@ -69,11 +69,7 @@ void Cam_Stream::update()
 
     while (true)
     {
-        if (this->stopped)
-        {
-            std::cout << "thread" << std::endl;
-            return;
-        }
+        if (this->stopped)  return;
 
 
         this->m.lock();

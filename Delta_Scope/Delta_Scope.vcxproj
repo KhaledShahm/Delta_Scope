@@ -140,12 +140,14 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="Cam_Stream.h" />
+    <ClInclude Include="CV_Utils.h" />
     <ClInclude Include="MicroscopeHW.h" />
     <ClInclude Include="Port.h" />
     <ClInclude Include="Utils.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Cam_Stream.cpp" />
+    <ClCompile Include="CV_Utils.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="MicroscopeHW.cpp" />
     <ClCompile Include="Port.cpp" />
