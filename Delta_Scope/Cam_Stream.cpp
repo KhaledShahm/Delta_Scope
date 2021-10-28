@@ -10,34 +10,17 @@
 #include "Cam_Stream.h"
 
 
-
-Cam_Stream& Cam_Stream::operator=(const Cam_Stream& o)
-{
-    if (this != &o)
-    {
-        frame = o.frame;
-    }
-    return *this;
-}
-
-
 Cam_Stream::Cam_Stream()
 {
-    this->init();
 }
 
 
-Cam_Stream::Cam_Stream(int device, int api)
-    : device_id(device), apiID(api)
-{
-    this->init();
-}
 
 
-void Cam_Stream::init()
+void Cam_Stream::init(int device_id, int apiID)
 {
     // Open selected camera using selected API
-    this->stream.open(this->device_id, this->apiID);
+    this->stream.open(device_id, apiID);
     if (!this->stream.isOpened()) {
         std::cerr << "(!)ERROR: Unable to open camera\n";
         exit(EXIT_FAILURE);

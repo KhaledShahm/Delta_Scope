@@ -13,14 +13,9 @@
 using namespace std;
 
 
-MicroscopeHW::MicroscopeHW(const unsigned long ulPortNo, const unsigned long ulBaundrate)
+MicroscopeHW::MicroscopeHW()
 {
-	// initialize Serial Port
-	if (!(port.Open(ulPortNo, ulBaundrate)))
-	{
-		std::cout << "Fail to connect" << std::endl;
-		exit(EXIT_FAILURE);
-	}
+	
 }
 
 
@@ -29,6 +24,16 @@ MicroscopeHW::~MicroscopeHW()
 
 }
 
+void MicroscopeHW::init(const unsigned long ulPortNo, const unsigned long ulBaundrate)
+{
+	// initialize Serial Port
+	if (!(port.Open(ulPortNo, ulBaundrate)))
+	{
+		std::cout << "Fail to connect" << std::endl;
+		exit(EXIT_FAILURE);
+	}
+
+}
 
 int MicroscopeHW::get_loc(char axis)
 {

@@ -42,7 +42,7 @@ public:
 	*
 	*  returns: void
 	*/
-	MicroscopeHW(const unsigned long ulPortNo, const unsigned long ulBaundrate);
+	MicroscopeHW();
 
 	/*
 	*  Destructor Function: MicroScope
@@ -152,6 +152,7 @@ public:
 	*/
 	bool go_Start();
 
+	void init(const unsigned long ulPortNo, const unsigned long ulBaundrate);
 
 	char axes[Number_axis] = { 'X', 'Y', 'Z', 'A' };
 	char test[Number_test] = { Motility , Morpholgy };
