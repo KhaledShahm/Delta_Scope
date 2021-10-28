@@ -189,8 +189,9 @@ tuple <Mat, int>  Cv_utils::get_areas(Mat image)
 
 Mat Cv_utils::to_hsv(Mat image)
 {
-    Mat HSV_image;
-    cvtColor(image, HSV_image, CV_BGR2HSV);
+    Mat HSV_image, resized_imge;
+    resized_imge = this->resize_image(image);
+    cvtColor(resized_imge, HSV_image, CV_BGR2HSV);
     return HSV_image;
 }
 
