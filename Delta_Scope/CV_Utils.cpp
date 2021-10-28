@@ -23,6 +23,31 @@ Cv_utils::~Cv_utils()
 }
 
 
+double Cv_utils::median(Mat image)
+{
+    double m = (image.rows * image.cols) / 2;
+    int bin = 0;
+    double med = -1.0;
+
+    int histSize = 256;
+    float range[] = { 0, 256 };
+    const float* histRange = { range };
+    bool uniform = true;
+    bool accumulate = false;
+    Mat hist;
+    calcHist(&image, 1, 0, cv::Mat(), hist, 1, &histSize, &histRange, uniform, accumulate);
+
+    for (int i = 0; i < histSize && med < 0.0; ++i)
+    {
+        bin += cvRound(hist.at< float >(i));
+        if (bin > m && med < 0.0)
+            med = i;
+    }
+
+    return med;
+}
+
+
 Mat Cv_utils::read_image(string Path, bool gray)
 {
     if (gray) return imread(Path, IMREAD_GRAYSCALE);
@@ -78,7 +103,85 @@ void Cv_utils::save_image(Mat image, string name)
 void Cv_utils::show_image(Mat image, string name, int wait)
 {
     imshow(name, image);
+    waitKey(wait);
+    destroyWindow(name);
+}
 
+
+tuple <Mat, int>  Cv_utils::get_areas(Mat image)
+{
+    Mat enhanced = this->enhance(image, 1000, -960);
+    enhanced = this->to_binary(enhanced);
+    enhanced = ~enhanced;
+    int a = sum(enhanced)[0];
+    return make_tuple(enhanced, a);
+}
+
+
+Mat Cv_utils::gray2rgb(Mat image)
+{
+    Mat RGB;
+    cvtColor(image, RGB, COLOR_GRAY2RGB);
+    return RGB;
+}
+
+
+Mat Cv_utils::to_gray(Mat image)
+{
+    if (this->is_gray(image)) return image;
+
+    Mat gray;
+    cvtColor(image, gray, COLOR_BGR2GRAY);
+    return gray;
+}
+
+
+Mat Cv_utils::to_binary(Mat image, int threshold)
+{
+    Mat gray = image, image_copy;
+    if (!(this->is_gray(image)))  gray = this->to_gray(image);
+
+    // Make a copy of the image
+    gray.copyTo(image_copy);
+
+    for (int x = 0; x < image_copy.rows; x++)
+    {
+        for (int y = 0; y < image_copy.cols; y++)
+        {
+            // Accesssing values of each pixels
+            if (image_copy.at<uchar>(x, y) > threshold)
+            {
+                image_copy.at<uchar>(x, y) = 255;
+            }
+            else
+            {
+                image_copy.at<uchar>(x, y) = 0;
+            }
+        }
+    }
+
+    return image_copy;
+}
+
+
+Mat Cv_utils::to_binary2(Mat image)
+{
+    Mat gray = image, thresh;
+    if (!(this->is_gray(image)))  gray = this->to_gray(image);
+
+    adaptiveThreshold(gray, thresh, 255, ADAPTIVE_THRESH_MEAN_C, THRESH_BINARY, 15, 5);
+    return thresh;
+}
+
+
+Mat Cv_utils::to_binary3(Mat image)
+{
+    Mat gray = image, thresh;
+    if (!(this->is_gray(image)))  gray = this->to_gray(image);
+
+
+    threshold(gray, thresh, 230, 255, THRESH_BINARY + THRESH_OTSU);
+    return thresh;
 }
 
 
@@ -88,192 +191,124 @@ bool Cv_utils::is_gray(Mat image)
 }
 
 
-Mat Cv_utils::to_gray(Mat image)
-{
-    if (is_gray(image)) return image;
-    Mat gray_image, resized_image;
-
-    resized_image = this->resize_image(image);
-    cvtColor(resized_image, gray_image, COLOR_BGR2GRAY);
-    return gray_image;
-}
-
-
 Mat Cv_utils::enhance(Mat img, int alpha, int beta)
 {
-    Mat gauss_mask, image_sharp, resized_image;
-    resized_image = this->resize_image(img);
-    GaussianBlur(resized_image, gauss_mask, Size(23, 23), 10);
-    addWeighted(resized_image, alpha, gauss_mask, beta, 0.0, image_sharp);
+    Mat gauss_mask, image_sharp;
+
+    GaussianBlur(img, gauss_mask, Size(23, 23), 10);
+    addWeighted(img, alpha, gauss_mask, beta, 0.0, image_sharp);
     return image_sharp;
-}
-
-
-Mat Cv_utils::to_binary(Mat image, int threshold)
-{
-    if (!is_gray(image))  to_gray(image);
-
-    // Make a copy of the image
-    Mat image_copy, resized_image;
-    image.copyTo(image_copy);
-
-    resized_image = this->resize_image(image_copy);
-    for (int x = 0; x < resized_image.rows; x++)
-    {
-        for (int y = 0; y < resized_image.cols; y++)
-        {
-            // Accesssing values of each pixels
-            if (resized_image.at<uchar>(x, y) > threshold)
-            {
-                resized_image.at<uchar>(x, y) = 0;
-            }
-            else
-            {
-                resized_image.at<uchar>(x, y) = 255;
-            }
-        }
-    }
-
-    return resized_image;
-}
-
-
-Mat Cv_utils::to_binary2(Mat image)
-{
-    if (!is_gray(image))  to_gray(image);
-
-    // Make a copy of the image
-    Mat resized_img, thresh;
-    //image.copyTo(image_copy);
-    resized_img = this->resize_image(image);
-
-    adaptiveThreshold(resized_img, thresh, 255, ADAPTIVE_THRESH_MEAN_C, THRESH_BINARY, 15, 5);
-    return thresh;
-}
-
-
-Mat Cv_utils::to_binary3(Mat image)
-{
-    if (!is_gray(image))  to_gray(image);
-
-    // Make a copy of the image
-    Mat image_copy, thresh, resized_img;
-    image.copyTo(image_copy);
-    resized_img = this->resize_image(image_copy);
-
-    threshold(resized_img, thresh, 230, 255, THRESH_BINARY + THRESH_OTSU);
-    return thresh;
 }
 
 
 Mat Cv_utils::resize_image(Mat image, int width, int height)
 {
-    // let's downscale the image using new  width and height
-    Mat resized_down;
-    //resize down
-    resize(image, resized_down, Size(width, height), INTER_LINEAR);
-    return resized_down;
+    // let's scale the image using new  width and height
+    Mat resized;
 
-}
+    //resize
+    resize(image, resized, Size(width, height), INTER_LINEAR);
+    return resized;
 
-
-tuple <Mat, int>  Cv_utils::get_areas(Mat image)
-{
-    Mat enhanced = enhance(image, 1000, -960);
-    enhanced = to_binary(enhanced);
-    enhanced = ~enhanced;
-    int a = sum(enhanced)[0];
-    return make_tuple(enhanced, a);
 }
 
 
 Mat Cv_utils::to_hsv(Mat image)
 {
-    Mat HSV_image, resized_imge;
-    resized_imge = this->resize_image(image);
-    cvtColor(resized_imge, HSV_image, CV_BGR2HSV);
+    Mat HSV_image;
+    cvtColor(image, HSV_image, COLOR_BGR2HSV);
     return HSV_image;
 }
 
 
-double Cv_utils::median(Mat image)
+tuple<int, int, int> Cv_utils::blur_eval(Mat image, bool mask, Mat masked)
 {
-    double m = (image.rows * image.cols) / 2;
-    int bin = 0;
-    double med = -1.0;
-
-    int histSize = 256;
-    float range[] = { 0, 256 };
-    const float* histRange = { range };
-    bool uniform = true;
-    bool accumulate = false;
-    Mat hist;
-    calcHist(&image, 1, 0, cv::Mat(), hist, 1, &histSize, &histRange, uniform, accumulate);
-
-    for (int i = 0; i < histSize && med < 0.0; ++i)
-    {
-        bin += cvRound(hist.at< float >(i));
-        if (bin > m && med < 0.0)
-            med = i;
-    }
-
-    return med;
+    Mat edge;
+    int fft_result = this->get_fft(image, true, 500, 500);
+    if (mask) edge = this->auto_canny(image, 0.33, false, 500, 500, true, masked);
+    edge = this->auto_canny(image, 0.33, false, 500, 500, true, masked);
+    int canny_result = sum(edge)[0];
+    int total_res = ((int(fft_result)) * 1000) + canny_result;
+    return make_tuple(fft_result, canny_result, total_res);
 }
 
 
-Mat Cv_utils::auto_canny(Mat image, float sigma, bool resize, int resize_thresh, bool mask)
+Mat Cv_utils::dilation(Mat image, int ksize)
 {
-    if (!(is_gray(image))) image = to_gray(image);
-    image = resize_image(image);
-    Mat blurred, edged;
-    GaussianBlur(image, blurred, Size(5, 5), 0);
-    double v = median(blurred);
+    Mat gray = image;
+    if (!(this->is_gray(image)))  gray = this->to_gray(image);
 
-    //apply automatic Canny edge detection using the computed median
-    int	lower = max(0, int((1.0 - sigma) * v));
-    int	upper = min(255, int((1.0 + sigma) * v));
 
-    Canny(blurred, edged, lower, upper);
+    // Create a structuring element (SE)
 
-    return edged;
+    Mat element = getStructuringElement(
+        MORPH_RECT, Size(2 * ksize + 1,
+            2 * ksize + 1),
+        Point(ksize, ksize));
+
+
+    // For Dilation
+    Mat dill;
+    dilate(image, dill, element,
+        Point(-1, -1), 1);
+
+    return dill;
 }
 
 
-Mat Cv_utils::apply_mask(Mat image, Mat mask)
+Mat Cv_utils::close(Mat image, int ksize1, int ksize2)
 {
-    Mat new_image;
-    image.copyTo(new_image);
-    for (int x = 0; x < mask.rows; x++)
-    {
-        for (int y = 0; y < mask.cols; y++)
-        {
-            // Accesssing values of each pixels
-            if (mask.at<uchar>(x, y) == 0)
-            {
-                new_image.at<uchar>(x, y) = 0;
-            }
+    Mat gray = image;
+    if (!(this->is_gray(image)))  gray = this->to_gray(image);
+    Mat dilated = this->dilation(image, ksize1);
+    Mat closed = this->erosion(dilated, ksize2);
 
-        }
-    }
-    new_image.convertTo(new_image, CV_8U);
-    return new_image;
+    return closed;
 }
 
 
-Mat Cv_utils::get_sperm_mask(Mat image)
+Mat Cv_utils::open(Mat image, int ksize1, int ksize2)
 {
-    Mat gray = to_gray(image);
-    Mat mask = to_binary(gray, 120);
-    gray = apply_mask(gray, mask);
-    return gray;
+    Mat gray = image;
+    if (!(this->is_gray(image)))  gray = this->to_gray(image);
+
+    Mat dilated = this->erosion(image, ksize1);
+    Mat open = this->dilation(dilated, ksize2);
+    return open;
 }
 
 
-int Cv_utils::get_fft(Mat image, int width, int height, bool with_blue_mask)
+Mat Cv_utils::erosion(Mat image, int ksize)
 {
-    if (!(is_gray(image))) image = to_gray(image);
+    Mat gray = image;
+    if (!(this->is_gray(image)))  gray = this->to_gray(image);
 
-    resize_image(image, width, height);
+
+    // Create a structuring element (SE)
+
+    Mat element = getStructuringElement(
+        MORPH_RECT, Size(2 * ksize + 1,
+            2 * ksize + 1),
+        Point(ksize, ksize));
+
+
+    // For Dilation
+    Mat erod;
+    erode(gray, erod, element,
+        Point(-1, -1), 1);
+
+    return erod;
+
+}
+
+
+int Cv_utils::get_fft(Mat image, bool resize, int width, int height)
+{
+    Mat gray, resized_image;
+
+    if (!(is_gray(image))) gray = to_gray(image);
+
+    if (resize)resized_image = resize_image(gray, width, height);
 
 
     int cx = image.cols / 2;
@@ -281,7 +316,7 @@ int Cv_utils::get_fft(Mat image, int width, int height, bool with_blue_mask)
 
     // Go float
     Mat fImage;
-    image.convertTo(fImage, CV_32F);
+    resized_image.convertTo(fImage, CV_32F);
 
 
     // FFT
@@ -350,8 +385,45 @@ int Cv_utils::get_fft(Mat image, int width, int height, bool with_blue_mask)
     //result = numpy.mean(img_fft)
     Scalar result = mean(logFFT);
 
-    return int(result.val[0] + 20);
+    return int(result.val[0]);
 }
+
+
+Mat Cv_utils::auto_canny(Mat image, float sigma, bool resize, int width, int height, bool mask, Mat masked)
+{
+    Mat gray, blurred, edged;
+    image.copyTo(gray);
+
+    if (!(this->is_gray(image))) gray = this->to_gray(image);
+
+    if (resize) gray = this->resize_image(gray, width, height);
+
+    GaussianBlur(gray, blurred, Size(5, 5), 0);
+    double v = median(blurred);
+
+    //apply automatic Canny edge detection using the computed median
+    int	lower = max(0, int((1.0 - sigma) * v));
+    int	upper = min(255, int((1.0 + sigma) * v));
+
+    Canny(blurred, edged, lower, upper);
+
+    if (mask) edged = this->apply_mask(edged, masked);
+
+    return edged;
+}
+
+
+Mat Cv_utils::get_sperm_mask(Mat image, Mat mask)
+{
+    Mat gray, mask, result;
+    if (!is_gray(image))  gray = to_gray(image);
+
+
+    mask = to_binary(image, 120);
+    result = apply_mask(image, mask);
+    return result;
+}
+
 
 tuple<int, Mat, Mat, Mat> Cv_utils::cc(Mat image)
 {
@@ -367,7 +439,7 @@ tuple<int, Mat, Mat, Mat> Cv_utils::cc(Mat image)
 }
 
 
-bool Cv_utils::found_color(Mat image, int area_threshold, int threshold)
+bool Cv_utils::found_color(Mat image, Mat mask, int area_threshold, int threshold)
 {
     Mat blured_image, blue_mask, hsv, resized_image;
     int are_blue_mask = 0;
@@ -394,7 +466,56 @@ bool Cv_utils::found_color(Mat image, int area_threshold, int threshold)
 }
 
 
+Mat Cv_utils::apply_mask(Mat image, Mat mask)
+{
+    Mat copy_image;
+    image.copyTo(copy_image);
+
+    for (int x = 0; x < mask.rows; x++)
+    {
+        for (int y = 0; y < mask.cols; y++)
+        {
+            // Accesssing values of each pixels
+            if (mask.at<uchar>(x, y) == 0)
+            {
+                copy_image.at<uchar>(x, y) = 0;
+            }
+
+        }
+    }
+    copy_image.convertTo(copy_image, CV_8U);
+    return copy_image;
+}
+
+
 bool Cv_utils::found_sperm(Mat image)
 {
     return true;
+}
+
+
+Mat Cv_utils::anding(Mat image, Mat mask)
+{
+    Mat output;
+    bitwise_and(image, mask, output);
+    output.convertTo(output, CV_8U);
+    return output;
+}
+
+
+Mat Cv_utils::oring(Mat image, Mat mask)
+{
+    Mat output;
+    bitwise_or(image, mask, output);
+    output.convertTo(output, CV_8U);
+    return output;
+}
+
+
+Mat  Cv_utils::xoring(Mat image, Mat mask)
+{
+    Mat output;
+    bitwise_xor(image, mask, output);
+    output.convertTo(output, CV_8U);
+    return output;
 }
